@@ -4,9 +4,9 @@
 // Created          : 05-10-2016
 //
 // Last Modified By : RFTD
-// Last Modified On : 05-10-2016
+// Last Modified On : 02-16-2017
 // ***********************************************************************
-// <copyright file="LogResposta.cs" company="ACBr.Net">
+// <copyright file="CancelamentoSatResposta.cs" company="ACBr.Net">
 //		        		   The MIT License (MIT)
 //	     		    Copyright (c) 2016 Grupo ACBr.Net
 //
@@ -28,28 +28,61 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
+
 using System;
+using System.ComponentModel;
+using System.IO;
 using System.Text;
+using ACBr.Net.Core.Extensions;
 
 namespace ACBr.Net.Sat
 {
-    public sealed class LogResposta : SatResposta
+    /// <summary>
+    /// Classe que retorna a resposta do Sat quando usado o metodo de cancelamento.
+    /// </summary>
+    /// <seealso cref="SatResposta" />
+    public sealed class CancelamentoSatResposta : SatResposta, INotifyPropertyChanged
     {
+        #region Events
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        #endregion Events
+
         #region Constructors
 
-        public LogResposta(string retorno, Encoding encoding) : base(retorno)
+        /// <summary>
+        /// Inicializar uma nova instancida da classe <see cref="CancelamentoSatResposta"/>.
+        /// </summary>
+        /// <param name="retorno">O retorno.</param>
+        /// <param name="encoding">O encoding.</param>
+        public CancelamentoSatResposta(string retorno, Encoding encoding) : base(retorno, encoding)
         {
-            if (CodigoDeRetorno != 15000) return;
+            if (CodigoDeRetorno != 7000 || RetornoLst.Count < 6) return;
 
-            if (RetornoLst.Count > 5)
-                Log = encoding.GetString(Convert.FromBase64String(RetornoLst[5]));
+            using (var stream = new MemoryStream(Convert.FromBase64String(RetornoLst[6])))
+            {
+                Cancelamento = CFeCanc.Load(stream, encoding);
+            }
+
+            QRCode = $"{RetornoLst[8].OnlyNumbers()}|{RetornoLst[7]}|{RetornoLst[9]}|{RetornoLst[10]}|{RetornoLst[11]}";
         }
 
         #endregion Constructors
 
         #region Properties
 
-        public string Log { get; private set; }
+        /// <summary>
+        /// Retorna o cancelamento caso tenha ocorrido com sucesso.
+        /// </summary>
+        /// <value>The cancelamento.</value>
+        public CFeCanc Cancelamento { get; private set; }
+
+        /// <summary>
+        /// Retorna o QRCode caso tenha sido realizado com sucesso.
+        /// </summary>
+        /// <value>The qr code.</value>
+        public string QRCode { get; private set; }
 
         #endregion Properties
     }

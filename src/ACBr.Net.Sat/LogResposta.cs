@@ -1,12 +1,12 @@
 // ***********************************************************************
 // Assembly         : ACBr.Net.Sat
 // Author           : RFTD
-// Created          : 03-31-2016
+// Created          : 05-10-2016
 //
 // Last Modified By : RFTD
-// Last Modified On : 02-16-2017
+// Last Modified On : 05-10-2016
 // ***********************************************************************
-// <copyright file="ExtratoSat.cs" company="ACBr.Net">
+// <copyright file="LogResposta.cs" company="ACBr.Net">
 //		        		   The MIT License (MIT)
 //	     		    Copyright (c) 2016 Grupo ACBr.Net
 //
@@ -29,14 +29,29 @@
 // <summary></summary>
 // ***********************************************************************
 
+using System;
+using System.Text;
+
 namespace ACBr.Net.Sat
 {
-    public abstract partial class ExtratoSat
+    public sealed class LogResposta : SatResposta
     {
-        #region Propriedades
+        #region Constructors
 
-        public byte[] Logo { get; set; }
+        public LogResposta(string retorno, Encoding encoding) : base(retorno, encoding)
+        {
+            if (CodigoDeRetorno != 15000) return;
 
-        #endregion Propriedades
+            if (RetornoLst.Count > 5)
+                Log = encoding.GetString(Convert.FromBase64String(RetornoLst[5]));
+        }
+
+        #endregion Constructors
+
+        #region Properties
+
+        public string Log { get; private set; }
+
+        #endregion Properties
     }
 }

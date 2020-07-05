@@ -30,7 +30,6 @@
 // ***********************************************************************
 
 using ACBr.Net.Core;
-using ACBr.Net.Core.Exceptions;
 using ACBr.Net.Core.Extensions;
 using ACBr.Net.Core.Logging;
 using ACBr.Net.DFe.Core.Common;
@@ -46,7 +45,6 @@ using ACBr.Net.Integrador;
 
 namespace ACBr.Net.Sat
 {
-    // ReSharper disable once InconsistentNaming
     /// <summary>
     /// Classe ACBrSat, responsavel por comunicar com o CF-e-SAT.
     /// </summary>
@@ -69,6 +67,7 @@ namespace ACBr.Net.Sat
         private string codigoAtivacao;
         private ExtratoSat extrato;
         private bool aguardandoResposta;
+        private ACBrIntegrador integradorFiscal;
 
         #endregion Fields
 
@@ -177,7 +176,20 @@ namespace ACBr.Net.Sat
         [DefaultValue(null)]
         [Category("Componentes ACBr.Net")]
         [TypeConverter(typeof(ReferenceConverter))]
-        public ACBrIntegrador IntegradorFiscal { get; set; }
+        public ACBrIntegrador IntegradorFiscal
+        {
+            get => integradorFiscal;
+            set
+            {
+                if (integradorFiscal != null)
+                    integradorFiscal.OnGetNumeroSessao -= IntegradorFiscalOnOnGetNumeroSessao;
+
+                integradorFiscal = value;
+
+                if (integradorFiscal != null)
+                    integradorFiscal.OnGetNumeroSessao += IntegradorFiscalOnOnGetNumeroSessao;
+            }
+        }
 
         /// <summary>
         /// Define/retorna a classe responsável por imprimir o Extrato do Sat.
@@ -559,7 +571,6 @@ namespace ACBr.Net.Sat
         /// <summary>
         /// Consulta os dados da sessão informada.
         /// </summary>
-        /// <param name="numeroSessao">The numero sessao.</param>
         /// <returns>SatResposta.</returns>
         public ConsultaSessaoResposta ConsultarUltimaSessaoFiscal()
         {
@@ -803,8 +814,7 @@ namespace ACBr.Net.Sat
 
             this.Log().Info($"GerarSignAc: Certificado: {certificado.SerialNumber} - CNPJSoftwareHouse: {CNPJSoftwareHouse} - CNPJEstbComercial: {CNPJEstbComercial}");
 
-            var privateProvider = certificado.PrivateKey as RSACryptoServiceProvider;
-            if (privateProvider == null) return null;
+            if (!(certificado.PrivateKey is RSACryptoServiceProvider privateProvider)) throw new ArgumentNullException(nameof(certificado.PrivateKey));
 
             var cspParameters = new CspParameters
             {
@@ -818,7 +828,6 @@ namespace ACBr.Net.Sat
             {
                 var data = Encoding.UTF8.GetBytes(CNPJSoftwareHouse + CNPJEstbComercial);
                 var signData = rsa.SignData(data, "SHA256");
-
                 var sign = signData.ToBase64();
 
                 this.Log().Info($"GerarSignAc: Sign: {sign}");
@@ -889,6 +898,11 @@ namespace ACBr.Net.Sat
             var e = new NumeroSessaoEventArgs(Sessao);
             OnGetNumeroSessao.Raise(this, e);
             Sessao = e.Sessao;
+        }
+
+        private void IntegradorFiscalOnOnGetNumeroSessao(object sender, Integrador.Events.NumeroSessaoEventArgs e)
+        {
+            e.Sessao = Sessao;
         }
 
         #endregion Private
